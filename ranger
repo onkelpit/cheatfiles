@@ -1,0 +1,226 @@
+Introduction
+============
+
+This guide will teach you how to efficiently use `ranger`.
+
+User interface
+==============
+
+The main window consists of three panels by default (it's called [Miller
+columns](https://en.wikipedia.org/wiki/Miller_columns) by the way):
+
+-   the middle one with the contents of the current directory,
+-   the left one shows the parent directory, with the current directory
+    highlighted,
+-   the right one serves various previews; I will tell you more about it
+    later.
+
+If you're familiar with [vim](http://www.vim.org), you should feel right at home with
+`ranger's` UI conventions. `ranger` uses the "hjkl" keys for navigation
+and borrows many idioms from `vim`. For example: "yy" (copy line in
+`vim`) copies a file, "pp" pastes it and "dd" prepares a file to be
+moved (by being pasted somewhere else later, like with copy). The more
+complex functions may be called from the command line invoked with ":"
+(a colon).
+
+The current file's attributes may be seen at the bottom and the current
+directory path may be seen at the top.
+
+For the `mc` users
+------------------
+
+If you're familiar with `mc` ([Midnight Commander](https://www.midnight-commander.org)) the first thing you
+may notice is the lack of the second panel for the file navigation. It
+may seem like a limitation but in most cases people use only one panel
+at a time. `ranger` allows you to create new tabs (like in a web
+browser) and switch between them with either `Alt-number` or `Tab`. If
+you open just two tabs, `ranger's` tabs effectively behave just like
+`mc's` panels. And you can even open more if such need arises.
+
+Movement
+========
+
+The basic movement keys are inspired by `vim`: "jk" moves up and down,
+"l" enters the selected directory or opens a file and "h" returns to the
+parent directory. Many other navigation keys known from `vim` work too,
+feel free to try them.
+
+Configuration files
+===================
+
+`ranger` uses 4 main configuration files:
+
+-   `commands.py` contains various functions' implementation, written in
+    Python, used to modify `ranger's` behavior,
+-   `rc.conf` is used for setting various options and binding the keys
+    to functions,
+-   `rifle.conf` decides which program to use for opening which file,
+-   `scope.sh` is a shell script used to generate the previews for
+    various file types.
+
+It's quite common to use `ranger --copy-config=all` to copy the
+default config files to `~/.config/ranger` and modify them there. Be
+aware that for `rc.conf` and `commands.py`, ranger reads *both* the global *and*
+the user's config (in that order). It allows the user to maintain only a small
+config which sets only the things not set in the default one.  For `scope.sh`
+and `rifle.conf`, ranger reads *either* the users *or* the global config.
+
+The best practice is to only add the options/keybindings you actually want to
+change to your rc.conf, rather than to have a complete copy of the default
+rc.conf.  This eliminates the need to update your config manually and gives you
+the benefits from new options/keybindings of future ranger versions.
+If you want to keep the full rc.conf though, you may want to set the
+environment variable `RANGER_LOAD_DEFAULT_RC` to `FALSE` to avoid loading
+*both* the default and your own rc.conf.  In this case you have to update your
+config manually though.
+
+File operations
+===============
+
+To copy a file, highlight it, press "yy" to mark it for copying
+(analogously to copying a line in `vim` with "yy"), then navigate to a
+target directory (or switch a tab if you decided to do it the "`mc`
+way") and then press "pp" to paste it (again, almost like in `vim`).
+
+Moving a file differs very little from copying it: just use "dd" instead
+of "yy" at the beginning.
+
+To copy/move multiple files, just mark them with `Space` then use
+"dd/yy". If you want to operate on multiple files stored in different
+directories, you may use "ya/da" to add them to the list of files to be
+copied/moved before pasting them.
+
+(Note that the copy/cut buffers can be used for other operations as
+well, by using the "%c" macro in your commands. For example, adding
+files to the cut/copy buffer using "ya"/"da" then using the `:shell -w
+printf %c | xargs rm` command allows you to delete multiple files in
+multiple directories. Remember to clear the buffer once you're done
+using "ud"/"uy".)
+
+If you'd like to copy files from one ranger instance to another, type
+`:save_copy_buffer` in one and `:load_copy_buffer` in the other ranger
+instance.  This method can also be used to export a list of files.  They are
+saved in the file `~/.config/ranger/copy_buffer`.
+
+Tabs
+====
+
+If you're working in more than one directory at a time -- and you most
+likely do -- you may create tabs for each directory to which you want to
+have a quick access. The tabs are numbered. To switch to the N-th tab,
+press `Alt-N`, where `N` is the tab number. If such tab does not exist
+yet, it will be created. To close a tab, press "q" (if you close the
+last tab, the entire `ranger` process will close).
+
+Previews
+========
+
+I've mentioned the previews in the right column of `ranger`. I believe
+they deserve a separate section in this guide.
+
+All file previews are supplied by the `scope.sh` config file. It is a
+regular shell script and it's behavior is documented in detail inside of
+it.
+
+Image previews
+--------------
+
+A very special case of the previews are the image previews. Yes,
+`ranger` can display images in your terminal. It uses an utility
+supplied with the `w3m` web browser (sometimes packaged in a separate
+package, like `w3m-img` in Debian). While it's reliable most of the
+time, please be aware that it is a hack and may behave very strangely at
+times.
+
+Since the commit `9b73aeb` (merged around 10 October 2016) `ranger` supports reliable image previews in `urxvt` and `iTerm2` terminal emulators. To enable it, set `preview_images_method` to either `urxvt` or `iTerm2`. Please refer to the documentation for further information. For the `urxvt` method to work on Arch Linux it might be needed to install the `rxvt-unicode-pixbuf` package instead of the regular `rxvt-unicode`.
+
+Custom image previews
+---------------------
+
+In the recent versions of `ranger`, the mechanism of the image previews
+was extended and generalized. When calling `scope.sh`, `ranger` sets the
+`$cached` environmental variable containing a unique path to a file
+where the image preview may be generated if needed. `scope.sh` may then
+save an image to that path and exit with the exitcode "6" (documented
+inside `scope.sh`, may be a subject to some changes) to tell `ranger` to
+use it. Simply saying: if you can convert a file to a jpg, `ranger` is
+able to show a graphical preview for it. Videos, PDFs, all sort of
+files.
+
+Rifle
+=====
+
+`rifle` is a powerful smart file opener bundled with `ranger`. It
+tries to guess with what program it should open a given file based on
+its MIME type, extension, the available programs and a few other
+factors. It is configured with the `rifle.conf` file. It is used by
+`ranger` internally but may be used as a standalone program too.
+
+More tips
+=========
+
+File tagging
+------------
+
+By pressing "t" you may mark a file with an asterisk ("\*"). It is
+persistent and will be there until you remove it manually. It may be
+used for example for marking the already read e-books, or files that
+need some action.
+
+You can actually mark files with almost any other character besides the
+asterisk. Pressing a quotation mark (' " ') followed by any other
+character marks the file with that character.
+
+The tags may also be used to automatically enable some options in
+certain directories. Refer to the documentation of the `:setintag`
+command.
+
+Metadata
+--------
+
+Storing the file metadata is a brand new feature of `ranger`. It may
+be used to add arbitrary key-value data to any file. Calling `:meta
+title a very interesting title` will set the tag "title" of the
+current file to "a very interesting title".
+
+`:meta` is most commonly used in conjunction with `:linemode`. The
+built-in linemodes are bound to "M" followed by some letter. At the
+moment of writing this guide, there are 3 built-in linemodes:
+
+-   `filename`: no metadata, the default mode of ranger,
+-   `permissions`: file permissions are displayed next to the files,
+-   `metatitle`: see below.
+
+The last line mode, `metatitle`, is extremely handy for organizing all
+sorts of documents: books, movies, pictures and more. It displays the
+files based on their metadata. The current format is:
+`[[year - ]title] alignment [authors]`. Bracketed content is ignored
+if empty. The `title` field is mandatory for this to work. To define
+a custom linemode, please refer to this page:
+[[Custom linemodes|Custom linemodes]].
+
+`:meta` stores the metadata in the ".metadata.json" file for each
+directory in which it is used.
+
+Directory flattening
+--------------------
+
+If you're browsing a moderetely nested directory tree, you may find
+`:flat` useful. It allows to browse a directory tree in a linear
+fashion: all the files up to the n-th level are shown together. It's a
+bit hard to explain so just call `:flat 1` and observe what happens.
+The argument is the maximum number of directories to flatten. Pass -1
+for no limit (use with caution!) and 0 to disable `:flat`.
+
+Bulk renaming
+-------------
+
+`ranger` supports bulk file renaming with the `:bulkrename` command.
+Mark the files that you want to rename and call `:bulkrename`. It
+should open a file containing a list of these files in your text
+editor (determined with `rifle`). You may freely change the names in
+that file. When you are done, save the file and close the editor.
+`ranger` will show you a preview of what will happen in a few moments.
+
+`:bulkrename` works great with `:flat`!
+
